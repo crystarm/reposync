@@ -1,0 +1,38 @@
+name: Sync fork default branches
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only list the forks that would be synchronized
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-fork-default-branches
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Synchronize forks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Synchronize default branches
+        env:
+          FORK_SYNC_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
+          SYNC_OWNER: ${{ github.repository_owner }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: python3 scripts/sync_forks.py
