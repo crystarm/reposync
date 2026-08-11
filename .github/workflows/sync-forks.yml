@@ -12,7 +12,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: sync-fork-default-branches
@@ -28,7 +28,7 @@ jobs:
       - name: Check out this repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Synchronize default branches
         env:
@@ -36,3 +36,17 @@ jobs:
           SYNC_OWNER: ${{ github.repository_owner }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: python3 scripts/sync_forks.py
+
+      - name: Commit synchronization status
+        if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true) }}
+        run: |
+          if git diff --quiet -- STATUS.md; then
+            echo "STATUS.md is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add STATUS.md
+          git commit -m "chore: update synchronization status"
+          git push
